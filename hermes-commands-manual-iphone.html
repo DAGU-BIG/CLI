@@ -1,0 +1,1258 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Hermes Agent 命令手册</title>
+<style>
+  :root {
+    --bg: #f8f9fb;
+    --card-bg: #ffffff;
+    --border: #e5e7eb;
+    --text: #1f2937;
+    --text-secondary: #6b7280;
+    --text-muted: #9ca3af;
+    --accent: #6366f1;
+    --accent-light: #eef2ff;
+    --accent-hover: #4f46e5;
+    --radius: 10px;
+    --shadow-sm: 0 1px 2px rgba(0,0,0,0.04);
+    --shadow: 0 1px 3px rgba(0,0,0,0.06);
+    --shadow-md: 0 2px 8px rgba(0,0,0,0.07);
+    --font-mono: 'SF Mono', 'Fira Code', 'Cascadia Code', 'JetBrains Mono', 'Consolas', monospace;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+    padding-bottom: 80px;
+    max-width: 100vw;
+    overflow-x: hidden;
+  }
+
+  /* ===== TOP BAR ===== */
+  .topbar {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background: var(--card-bg);
+    border-bottom: 1px solid var(--border);
+    padding: 10px 16px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+  }
+
+  .topbar .brand {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex: 1;
+    min-width: 0;
+  }
+
+  .topbar .brand .icon {
+    width: 30px; height: 30px;
+    background: linear-gradient(135deg, var(--accent), #8b5cf6);
+    border-radius: 7px;
+    display: flex; align-items: center; justify-content: center;
+    color: #fff; font-size: 14px;
+    flex-shrink: 0;
+  }
+
+  .topbar .brand h1 {
+    font-size: 15px; font-weight: 700;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+
+  .topbar .menu-btn {
+    width: 34px; height: 34px;
+    border: none; background: var(--bg);
+    border-radius: 8px; font-size: 18px;
+    cursor: pointer; display: flex;
+    align-items: center; justify-content: center;
+    color: var(--text-secondary);
+  }
+
+  /* ===== SEARCH BAR ===== */
+  .search-wrapper {
+    position: sticky; top: 51px; z-index: 99;
+    padding: 10px 14px;
+    background: var(--bg);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .search-wrapper .search-inner {
+    position: relative;
+  }
+
+  .search-wrapper .search-icon {
+    position: absolute; left: 12px; top: 50%;
+    transform: translateY(-50%);
+    font-size: 16px; color: var(--text-muted);
+    pointer-events: none;
+  }
+
+  .search-input {
+    width: 100%;
+    padding: 10px 12px 10px 38px;
+    border: 1.5px solid var(--border);
+    border-radius: 24px;
+    font-size: 15px; background: var(--card-bg);
+    color: var(--text);
+    outline: none; transition: border-color 0.2s, box-shadow 0.2s;
+    -webkit-appearance: none;
+  }
+
+  .search-input:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+  }
+
+  .search-input::placeholder { color: var(--text-muted); }
+
+  .search-stats {
+    margin-top: 6px; padding: 0 6px;
+    font-size: 12px; color: var(--text-muted);
+  }
+
+  /* ===== BOTTOM NAV ===== */
+  .bottom-nav {
+    position: fixed; bottom: 0; left: 0; right: 0; z-index: 100;
+    background: var(--card-bg);
+    border-top: 1px solid var(--border);
+    display: flex;
+    padding: 6px 4px;
+    padding-bottom: max(6px, env(safe-area-inset-bottom));
+    box-shadow: 0 -1px 3px rgba(0,0,0,0.04);
+  }
+
+  .bottom-nav .nav-item {
+    flex: 1; display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    gap: 2px; padding: 4px 2px;
+    border: none; background: none;
+    font-size: 10px; color: var(--text-muted);
+    cursor: pointer; border-radius: 8px;
+    transition: all 0.15s;
+  }
+
+  .bottom-nav .nav-item .nav-emoji { font-size: 18px; }
+
+  .bottom-nav .nav-item.active {
+    color: var(--accent); font-weight: 600;
+  }
+
+  /* ===== DRAWER MENU ===== */
+  .overlay {
+    position: fixed; inset: 0; z-index: 200;
+    background: rgba(0,0,0,0.35);
+    opacity: 0; pointer-events: none;
+    transition: opacity 0.25s;
+  }
+  .overlay.open { opacity: 1; pointer-events: auto; }
+
+  .drawer {
+    position: fixed; top: 0; left: 0; bottom: 0; z-index: 201;
+    width: 280px; max-width: 85vw;
+    background: var(--card-bg);
+    transform: translateX(-100%);
+    transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    display: flex; flex-direction: column;
+    overflow-y: auto;
+  }
+  .drawer.open { transform: translateX(0); }
+
+  .drawer-header {
+    padding: 16px; border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; gap: 8px;
+  }
+  .drawer-header .icon {
+    width: 28px; height: 28px;
+    background: linear-gradient(135deg, var(--accent), #8b5cf6);
+    border-radius: 7px; display: flex;
+    align-items: center; justify-content: center;
+    color: #fff; font-size: 13px;
+  }
+  .drawer-header h3 { font-size: 15px; font-weight: 700; }
+  .drawer-header .ver { font-size: 11px; color: var(--text-muted); }
+
+  .drawer-nav { flex: 1; padding: 8px 0; }
+  .drawer-nav .cat-title {
+    padding: 12px 16px 6px;
+    font-size: 11px; text-transform: uppercase;
+    letter-spacing: 0.04em; color: var(--text-muted);
+    font-weight: 600;
+  }
+  .drawer-nav a {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 16px; color: var(--text-secondary);
+    text-decoration: none; font-size: 14px;
+    transition: background 0.1s;
+    border-left: 3px solid transparent;
+  }
+  .drawer-nav a:active { background: var(--bg); }
+  .drawer-nav a.active {
+    background: var(--accent-light); color: var(--accent);
+    font-weight: 600; border-left-color: var(--accent);
+  }
+
+  /* ===== MAIN CONTENT ===== */
+  .main {
+    padding: 12px 14px;
+  }
+
+  /* ===== SECTION HEADERS ===== */
+  .section { margin-bottom: 28px; }
+
+  .section-header {
+    display: flex; align-items: center; gap: 8px;
+    margin-bottom: 10px; padding-bottom: 8px;
+    border-bottom: 2px solid var(--accent-light);
+  }
+  .section-header .section-icon {
+    width: 30px; height: 30px; border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 15px; flex-shrink: 0;
+  }
+  .section-header h3 {
+    font-size: 17px; font-weight: 700;
+  }
+  .section-header .count {
+    font-size: 12px; color: var(--text-muted);
+    font-weight: 400;
+  }
+
+  .icon-purple { background: #eef2ff; color: #6366f1; }
+  .icon-blue { background: #dbeafe; color: #3b82f6; }
+  .icon-green { background: #d1fae5; color: #10b981; }
+  .icon-orange { background: #fff7ed; color: #f97316; }
+  .icon-rose { background: #ffe4e6; color: #f43f5e; }
+  .icon-teal { background: #ccfbf1; color: #14b8a6; }
+
+  /* ===== SUB SECTION ===== */
+  .sub-section { margin-bottom: 18px; }
+  .sub-section h4 {
+    font-size: 14px; font-weight: 600; color: var(--text);
+    margin-bottom: 8px; padding-left: 10px;
+    border-left: 3px solid var(--accent);
+  }
+
+  /* ===== COMMAND CARDS ===== */
+  .commands-grid {
+    display: flex; flex-direction: column; gap: 8px;
+  }
+
+  .command-card {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px 16px;
+    transition: box-shadow 0.15s;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .command-card:active {
+    background: #fafbfc;
+    box-shadow: var(--shadow-md);
+  }
+
+  .command-card .cmd-name {
+    font-family: var(--font-mono);
+    font-size: 14px; font-weight: 700;
+    color: var(--accent);
+    margin-bottom: 4px;
+    word-break: break-all;
+    line-height: 1.3;
+  }
+
+  .command-card .cmd-desc {
+    font-size: 13px; color: var(--text-secondary);
+    line-height: 1.5; margin-bottom: 6px;
+  }
+
+  .command-card .cmd-params {
+    display: flex; flex-wrap: wrap; gap: 4px;
+    margin-top: 4px;
+  }
+
+  .command-card .param-tag {
+    font-family: var(--font-mono);
+    font-size: 10px; background: var(--bg);
+    color: var(--text-secondary);
+    padding: 3px 8px; border-radius: 4px;
+    border: 1px solid var(--border);
+  }
+
+  .command-card .param-tag.required {
+    background: #fef2f2; color: #dc2626;
+    border-color: #fecaca;
+  }
+
+  .command-card .cmd-meta {
+    display: flex; flex-wrap: wrap; gap: 6px;
+    margin-top: 6px; font-size: 11px; color: var(--text-muted);
+  }
+
+  .command-card .cmd-meta span {
+    display: inline-flex; align-items: center; gap: 2px;
+  }
+
+  /* Expanded state */
+  .command-card.expanded .cmd-desc {
+    -webkit-line-clamp: unset !important;
+    display: block !important;
+  }
+
+  /* ===== TABLES ===== */
+  .table-wrap {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    background: var(--card-bg);
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+  }
+
+  .toolsets-table {
+    width: 100%; border-collapse: collapse;
+    font-size: 13px; min-width: 500px;
+  }
+
+  .toolsets-table th {
+    text-align: left; padding: 10px 14px;
+    font-size: 12px; font-weight: 600;
+    color: var(--text-secondary);
+    background: var(--bg);
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+  }
+
+  .toolsets-table td {
+    padding: 9px 14px; border-bottom: 1px solid var(--border);
+  }
+
+  .toolsets-table tr:last-child td { border-bottom: none; }
+
+  .toolsets-table .ts-name {
+    font-family: var(--font-mono);
+    font-size: 12px; font-weight: 600;
+    color: var(--accent); white-space: nowrap;
+  }
+
+  .toolsets-table tr:active td { background: #fafbfc; }
+
+  /* ===== NO RESULTS ===== */
+  .no-results {
+    text-align: center; padding: 50px 20px;
+    color: var(--text-muted);
+  }
+  .no-results .no-results-icon { font-size: 40px; margin-bottom: 10px; }
+  .no-results h3 { color: var(--text); margin-bottom: 4px; font-size: 16px; }
+
+  /* ===== HIGHLIGHT ===== */
+  .highlight {
+    background: #fef08a; padding: 1px 2px;
+    border-radius: 2px;
+  }
+
+  /* ===== BACK TO TOP ===== */
+  .back-top {
+    position: fixed; bottom: 84px; right: 14px; z-index: 50;
+    width: 40px; height: 40px;
+    background: var(--card-bg); border: 1px solid var(--border);
+    border-radius: 50%; font-size: 18px;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; box-shadow: var(--shadow);
+    opacity: 0; transform: translateY(10px);
+    transition: all 0.2s;
+    pointer-events: none;
+  }
+  .back-top.visible { opacity: 1; transform: translateY(0); pointer-events: auto; }
+
+  /* ===== TAG FILTERS BELOW SEARCH ===== */
+  .tag-filters {
+    display: flex; gap: 6px;
+    padding: 4px 0; overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  .tag-filters::-webkit-scrollbar { display: none; }
+
+  .tag-filters .tag-pill {
+    flex-shrink: 0; padding: 5px 12px;
+    border-radius: 16px; border: 1px solid var(--border);
+    font-size: 12px; background: var(--card-bg);
+    color: var(--text-secondary); cursor: pointer;
+    white-space: nowrap; transition: all 0.15s;
+  }
+  .tag-filters .tag-pill.active {
+    background: var(--accent); color: #fff;
+    border-color: var(--accent);
+  }
+</style>
+</head>
+<body>
+
+<!-- ===== TOP BAR ===== -->
+<div class="topbar">
+  <button class="menu-btn" id="menuBtn" aria-label="菜单">☰</button>
+  <div class="brand">
+    <span class="icon">⚡</span>
+    <h1>Hermes Agent 命令手册</h1>
+  </div>
+</div>
+
+<!-- ===== SEARCH ===== -->
+<div class="search-wrapper">
+  <div class="search-inner">
+    <span class="search-icon">🔍</span>
+    <input
+      type="text" class="search-input" id="searchInput"
+      placeholder="搜索命令…" autocomplete="off"
+    >
+  </div>
+  <div class="tag-filters" id="tagFilters">
+    <span class="tag-pill active" data-tag="all">全部</span>
+    <span class="tag-pill" data-tag="ai-tool">AI 工具</span>
+    <span class="tag-pill" data-tag="cli">CLI 命令</span>
+    <span class="tag-pill" data-tag="slash">斜杠命令</span>
+    <span class="tag-pill" data-tag="toolset">工具集</span>
+  </div>
+  <div class="search-stats" id="searchStats"></div>
+</div>
+
+<!-- ===== DRAWER OVERLAY ===== -->
+<div class="overlay" id="overlay"></div>
+
+<!-- ===== DRAWER ===== -->
+<nav class="drawer" id="drawer">
+  <div class="drawer-header">
+    <span class="icon">⚡</span>
+    <div>
+      <h3>Hermes Agent</h3>
+      <span class="ver">命令参考 · v2.3</span>
+    </div>
+  </div>
+  <div class="drawer-nav">
+    <div class="cat-title">AI 工具</div>
+    <a href="#ai-interaction">💬 交互与反馈</a>
+    <a href="#ai-terminal">💻 终端与进程</a>
+    <a href="#ai-files">📁 文件操作</a>
+    <a href="#ai-search">🔍 搜索与查询</a>
+    <a href="#ai-memory">🧠 记忆与技能</a>
+    <a href="#ai-tasks">📋 任务管理</a>
+    <a href="#ai-projects">📂 项目管理</a>
+    <a href="#ai-other">🎵 其他工具</a>
+
+    <div class="cat-title">CLI 命令</div>
+    <a href="#cli-global">🌍 全局标志</a>
+    <a href="#cli-chat">💬 聊天命令</a>
+    <a href="#cli-config">⚙️ 配置命令</a>
+    <a href="#cli-auth">🔑 凭据管理</a>
+    <a href="#cli-tools">🛠️ 工具和技能</a>
+    <a href="#cli-mcp">🔌 MCP 服务器</a>
+    <a href="#cli-gateway">📡 网关</a>
+    <a href="#cli-sessions">📜 会话管理</a>
+    <a href="#cli-cron">⏰ Cron 定时</a>
+    <a href="#cli-webhooks">🪝 Webhooks</a>
+    <a href="#cli-profiles">👤 配置文件</a>
+    <a href="#cli-other">📦 其他命令</a>
+
+    <div class="cat-title">会话斜杠命令</div>
+    <a href="#slash-session">🎛️ 会话控制</a>
+    <a href="#slash-config">⚙️ 配置</a>
+    <a href="#slash-tools">🛠️ 工具和技能</a>
+    <a href="#slash-gateway">📡 网关</a>
+    <a href="#slash-utility">🔧 实用工具</a>
+    <a href="#slash-info">ℹ️ 信息</a>
+
+    <div class="cat-title">参考</div>
+    <a href="#toolsets">📊 工具集列表</a>
+    <a href="#paths">📂 关键路径</a>
+  </div>
+</nav>
+
+<!-- ===== BACK TO TOP ===== -->
+<div class="back-top" id="backTop" onclick="window.scrollTo({top:0,behavior:'smooth'})">↑</div>
+
+<!-- ===== MAIN CONTENT ===== -->
+<main class="main" id="mainContent">
+
+  <!-- ===== SECTION: AI TOOLS ===== -->
+  <div class="section" data-category="ai-tool" id="ai-tools-section">
+    <div class="section-header">
+      <div class="section-icon icon-purple">🤖</div>
+      <h3>AI 助手可调用工具 <span class="count">22</span></h3>
+    </div>
+
+    <div class="sub-section" id="ai-interaction" data-category="ai-tool">
+      <h4>💬 交互与反馈</h4>
+      <div class="commands-grid">
+        <div class="command-card" data-search="clarify 提问 澄清 反馈 多选 开放式">
+          <div class="cmd-name">clarify</div>
+          <div class="cmd-desc">向用户提问，获取澄清或反馈。支持多选和开放式问题。</div>
+          <div class="cmd-params">
+            <span class="param-tag required">question*</span>
+            <span class="param-tag">choices[]</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="sub-section" id="ai-terminal" data-category="ai-tool">
+      <h4>💻 终端与进程</h4>
+      <div class="commands-grid">
+        <div class="command-card" data-search="terminal 终端 shell bash 命令 执行 后台 前台 timeout pty">
+          <div class="cmd-name">terminal</div>
+          <div class="cmd-desc">执行 Shell 命令。Windows 通过 bash 运行。支持前台和后台模式。</div>
+          <div class="cmd-params">
+            <span class="param-tag required">command*</span>
+            <span class="param-tag">background</span>
+            <span class="param-tag">timeout</span>
+            <span class="param-tag">workdir</span>
+            <span class="param-tag">pty</span>
+            <span class="param-tag">notify_on_complete</span>
+          </div>
+          <div class="cmd-meta"><span>⏱ 默认 180s</span><span>📌 最大 600s</span></div>
+        </div>
+        <div class="command-card" data-search="process 进程 后台 管理 list poll log wait kill write submit">
+          <div class="cmd-name">process</div>
+          <div class="cmd-desc">管理后台进程：查看状态、获取日志、等待完成、终止。</div>
+          <div class="cmd-params">
+            <span class="param-tag required">action*</span>
+            <span class="param-tag required">session_id*</span>
+            <span class="param-tag">timeout</span>
+            <span class="param-tag">limit</span>
+          </div>
+          <div class="cmd-meta"><span>🎬 list|poll|log|wait|kill|write|submit|close</span></div>
+        </div>
+        <div class="command-card" data-search="read_terminal 终端 查看 读取 显示 GUI">
+          <div class="cmd-name">read_terminal</div>
+          <div class="cmd-desc">读取嵌入终端窗格当前显示内容，支持翻页查看历史输出。</div>
+          <div class="cmd-params"><span class="param-tag">start_line</span><span class="param-tag">count</span></div>
+        </div>
+        <div class="command-card" data-search="close_terminal 关闭 终端 标签 后台">
+          <div class="cmd-name">close_terminal</div>
+          <div class="cmd-desc">关闭后台进程的终端标签页，不终止进程。</div>
+          <div class="cmd-params"><span class="param-tag required">process_id*</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="sub-section" id="ai-files" data-category="ai-tool">
+      <h4>📁 文件操作</h4>
+      <div class="commands-grid">
+        <div class="command-card" data-search="read_file 读取 文件 行号 分页 ipynb docx xlsx">
+          <div class="cmd-name">read_file</div>
+          <div class="cmd-desc">读取文本文件带行号。支持 .ipynb, .docx, .xlsx 自动提取。</div>
+          <div class="cmd-params">
+            <span class="param-tag required">path*</span>
+            <span class="param-tag">offset</span>
+            <span class="param-tag">limit</span>
+          </div>
+          <div class="cmd-meta"><span>📄 默认 500 行</span><span>📌 最大 2000 行</span></div>
+        </div>
+        <div class="command-card" data-search="write_file 写入 文件 创建 覆盖">
+          <div class="cmd-name">write_file</div>
+          <div class="cmd-desc">覆盖式写入文件，自动创建父目录，自动语法检查。</div>
+          <div class="cmd-params">
+            <span class="param-tag required">path*</span>
+            <span class="param-tag required">content*</span>
+          </div>
+        </div>
+        <div class="command-card" data-search="patch 编辑 查找替换 replace V4A 多文件">
+          <div class="cmd-name">patch</div>
+          <div class="cmd-desc">精准查找替换。replace（单文件）/ patch（V4A 多文件补丁）。</div>
+          <div class="cmd-params">
+            <span class="param-tag required">mode*</span>
+            <span class="param-tag">path</span>
+            <span class="param-tag">old_string</span>
+            <span class="param-tag">new_string</span>
+            <span class="param-tag">replace_all</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="sub-section" id="ai-search" data-category="ai-tool">
+      <h4>🔍 搜索与查询</h4>
+      <div class="commands-grid">
+        <div class="command-card" data-search="search_files 搜索 文件 正则 grep 文件名 ripgrep">
+          <div class="cmd-name">search_files</div>
+          <div class="cmd-desc">搜索文件内容（正则）或按名称查找（glob）。基于 ripgrep。</div>
+          <div class="cmd-params">
+            <span class="param-tag required">pattern*</span>
+            <span class="param-tag">target</span>
+            <span class="param-tag">path</span>
+            <span class="param-tag">file_glob</span>
+            <span class="param-tag">limit</span>
+            <span class="param-tag">output_mode</span>
+          </div>
+        </div>
+        <div class="command-card" data-search="session_search 历史 会话 FTS5 发现 滚动 浏览">
+          <div class="cmd-name">session_search</div>
+          <div class="cmd-desc">搜索历史会话。支持发现（关键词）、滚动（上下文）、读取、浏览四种模式。</div>
+          <div class="cmd-params">
+            <span class="param-tag">query</span>
+            <span class="param-tag">limit</span>
+            <span class="param-tag">session_id</span>
+            <span class="param-tag">around_message_id</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="sub-section" id="ai-memory" data-category="ai-tool">
+      <h4>🧠 记忆与技能</h4>
+      <div class="commands-grid">
+        <div class="command-card" data-search="memory 记忆 持久化 跨会话 添加 替换 删除">
+          <div class="cmd-name">memory</div>
+          <div class="cmd-desc">持久化记忆管理。支持批量原子操作。</div>
+          <div class="cmd-params">
+            <span class="param-tag required">target*</span>
+            <span class="param-tag">action</span>
+            <span class="param-tag">content</span>
+            <span class="param-tag">old_text</span>
+            <span class="param-tag">operations[]</span>
+          </div>
+          <div class="cmd-meta"><span>🎯 target: memory | user</span></div>
+        </div>
+        <div class="command-card" data-search="skill_manage 技能 管理 创建 更新 删除 create patch">
+          <div class="cmd-name">skill_manage</div>
+          <div class="cmd-desc">管理技能：创建、更新、删除。支持关联文件的读写。</div>
+          <div class="cmd-params">
+            <span class="param-tag required">action*</span>
+            <span class="param-tag required">name*</span>
+            <span class="param-tag">content</span>
+            <span class="param-tag">category</span>
+          </div>
+          <div class="cmd-meta"><span>🎬 action: create|patch|edit|delete</span></div>
+        </div>
+        <div class="command-card" data-search="skill_view 查看 技能 加载">
+          <div class="cmd-name">skill_view</div>
+          <div class="cmd-desc">查看技能内容及其关联的参考文件、模板、脚本。</div>
+          <div class="cmd-params">
+            <span class="param-tag required">name*</span>
+            <span class="param-tag">file_path</span>
+          </div>
+        </div>
+        <div class="command-card" data-search="skills_list 列出 技能 列表 分类">
+          <div class="cmd-name">skills_list</div>
+          <div class="cmd-desc">列出所有可用技能及描述，可按分类过滤。</div>
+          <div class="cmd-params"><span class="param-tag">category</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="sub-section" id="ai-tasks" data-category="ai-tool">
+      <h4>📋 任务管理</h4>
+      <div class="commands-grid">
+        <div class="command-card" data-search="todo 任务 待办 列表 pending completed">
+          <div class="cmd-name">todo</div>
+          <div class="cmd-desc">管理当前会话的待办事项。</div>
+          <div class="cmd-params">
+            <span class="param-tag">todos[]</span>
+            <span class="param-tag">merge</span>
+          </div>
+          <div class="cmd-meta"><span>📌 pending|in_progress|completed|cancelled</span></div>
+        </div>
+        <div class="command-card" data-search="cronjob 定时 任务 调度 创建 列表 暂停 恢复 cron">
+          <div class="cmd-name">cronjob</div>
+          <div class="cmd-desc">管理定时任务。支持周期/单次调度，多平台交付。</div>
+          <div class="cmd-params">
+            <span class="param-tag required">action*</span>
+            <span class="param-tag required">schedule*</span>
+            <span class="param-tag">job_id</span>
+            <span class="param-tag">prompt</span>
+            <span class="param-tag">skills[]</span>
+            <span class="param-tag">script</span>
+            <span class="param-tag">deliver</span>
+            <span class="param-tag">no_agent</span>
+            <span class="param-tag">enabled_toolsets[]</span>
+            <span class="param-tag">workdir</span>
+          </div>
+          <div class="cmd-meta"><span>⏰ schedule: '30m'|'every 2h'|'0 9 * * *'</span></div>
+        </div>
+        <div class="command-card" data-search="delegate_task 委托 子任务 并行 子代理 批量">
+          <div class="cmd-name">delegate_task</div>
+          <div class="cmd-desc">将任务委托给独立的子代理并行执行（最多 3 个并行）。</div>
+          <div class="cmd-params">
+            <span class="param-tag">goal</span>
+            <span class="param-tag">context</span>
+            <span class="param-tag">tasks[]</span>
+            <span class="param-tag">role</span>
+          </div>
+          <div class="cmd-meta"><span>👥 role: leaf | orchestrator</span><span>📦 最多 3 并行</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="sub-section" id="ai-projects" data-category="ai-tool">
+      <h4>📂 项目管理</h4>
+      <div class="commands-grid">
+        <div class="command-card" data-search="project_create 创建 项目 工作区 命名">
+          <div class="cmd-name">project_create</div>
+          <div class="cmd-desc">创建桌面项目并切换当前会话。</div>
+          <div class="cmd-params">
+            <span class="param-tag required">name*</span>
+            <span class="param-tag required">path*</span>
+          </div>
+        </div>
+        <div class="command-card" data-search="project_list 列出 项目 工作区">
+          <div class="cmd-name">project_list</div>
+          <div class="cmd-desc">列出所有桌面项目（无参数）。</div>
+        </div>
+        <div class="command-card" data-search="project_switch 切换 项目">
+          <div class="cmd-name">project_switch</div>
+          <div class="cmd-desc">切换到指定项目（按名称、slug 或 id）。</div>
+          <div class="cmd-params"><span class="param-tag required">project*</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="sub-section" id="ai-other" data-category="ai-tool">
+      <h4>🎵 其他工具</h4>
+      <div class="commands-grid">
+        <div class="command-card" data-search="execute_code Python 脚本 执行 代码">
+          <div class="cmd-name">execute_code</div>
+          <div class="cmd-desc">执行 Python 脚本，可在脚本中调用 Hermes 工具。适合复杂逻辑。</div>
+          <div class="cmd-params"><span class="param-tag required">code*</span></div>
+          <div class="cmd-meta"><span>⏱ 5 分钟</span><span>📦 50KB</span><span>🔧 最多 50 次调用</span></div>
+        </div>
+        <div class="command-card" data-search="text_to_speech TTS 语音 文字转语音 朗读">
+          <div class="cmd-name">text_to_speech</div>
+          <div class="cmd-desc">文字转语音：将文本转为音频文件。</div>
+          <div class="cmd-params">
+            <span class="param-tag required">text*</span>
+            <span class="param-tag">output_path</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== SECTION: CLI ===== -->
+  <div class="section" data-category="cli" id="cli-section">
+    <div class="section-header">
+      <div class="section-icon icon-blue">🖥️</div>
+      <h3>CLI 命令参考</h3>
+    </div>
+
+    <div class="sub-section" id="cli-global" data-category="cli">
+      <h4>🌍 全局标志</h4>
+      <div class="commands-grid">
+        <div class="command-card" data-search="--version -V 版本"><div class="cmd-name">--version, -V</div><div class="cmd-desc">显示版本号。</div></div>
+        <div class="command-card" data-search="-r --resume 恢复 会话"><div class="cmd-name">-r, --resume SESSION</div><div class="cmd-desc">按 ID 或标题恢复会话。</div></div>
+        <div class="command-card" data-search="-c --continue 继续 最近"><div class="cmd-name">-c, --continue [NAME]</div><div class="cmd-desc">按名称恢复或恢复最近会话。</div></div>
+        <div class="command-card" data-search="-w --worktree 隔离 git 并行"><div class="cmd-name">-w, --worktree</div><div class="cmd-desc">隔离的 git worktree 模式（并行 agent）。</div></div>
+        <div class="command-card" data-search="-s --skills 技能 预加载"><div class="cmd-name">-s, --skills SKILL</div><div class="cmd-desc">预加载技能（逗号分隔或多次使用）。</div></div>
+        <div class="command-card" data-search="-p --profile 配置文件"><div class="cmd-name">-p, --profile NAME</div><div class="cmd-desc">使用命名配置文件。</div></div>
+        <div class="command-card" data-search="--yolo 跳过 批准 危险"><div class="cmd-name">--yolo</div><div class="cmd-desc">跳过危险命令批准（不推荐）。</div></div>
+        <div class="command-card" data-search="--pass-session-id 会话 id"><div class="cmd-name">--pass-session-id</div><div class="cmd-desc">在系统提示中包含会话 ID。</div></div>
+      </div>
+    </div>
+
+    <div class="sub-section" id="cli-chat" data-category="cli">
+      <h4>💬 聊天命令</h4>
+      <div class="commands-grid">
+        <div class="command-card" data-search="hermes chat -q query 单次 非交互 模型 toolsets verbose quiet">
+          <div class="cmd-name">hermes chat</div>
+          <div class="cmd-desc">启动交互式聊天。常用参数：<br>-q 单次查询  -m 模型  -t 工具集  -v 详细  -Q 安静  --checkpoints 检查点</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="sub-section" id="cli-config" data-category="cli">
+      <h4>⚙️ 配置命令</h4>
+      <div class="commands-grid">
+        <div class="command-card" data-search="setup config model doctor status 配置 设置 诊断">
+          <div class="cmd-name">hermes setup / config / model / doctor / status</div>
+          <div class="cmd-desc">配置管理：<br>setup 设置向导 · model 模型选择器 · config 查看/编辑/设置 · config edit 编辑 yaml · config set KEY VAL 设置值 · doctor 诊断 · status 状态 · config check 检查 · config migrate 迁移</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="sub-section" id="cli-auth" data-category="cli">
+      <h4>🔑 凭据管理</h4>
+      <div class="commands-grid">
+        <div class="command-card" data-search="auth 凭据 OAuth API key add list remove reset">
+          <div class="cmd-name">hermes auth</div>
+          <div class="cmd-desc">凭证管理：auth 交互管理 · auth add 添加 · auth list 列出 · auth remove 移除 · auth reset 重置耗尽</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="sub-section" id="cli-tools" data-category="cli">
+      <h4>🛠️ 工具和技能 CLI</h4>
+      <div class="commands-grid">
+        <div class="command-card" data-search="tools skills 工具 技能 list enable disable install uninstall browse">
+          <div class="cmd-name">hermes tools / skills</div>
+          <div class="cmd-desc">
+            工具：tools 交互UI · tools list 列出 · tools enable/disable 启用/禁用<br>
+            技能：skills list 列表 · skills search 搜索 · skills install 安装 · skills browse 浏览 · skills update 更新 · skills uninstall 卸载
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="sub-section" id="cli-mcp" data-category="cli">
+      <h4>🔌 MCP 服务器</h4>
+      <div class="commands-grid">
+        <div class="command-card" data-search="mcp serve add remove list test configure 服务器">
+          <div class="cmd-name">hermes mcp</div>
+          <div class="cmd-desc">MCP 管理：serve 运行 · add 添加 · remove 移除 · list 列出 · test 测试 · configure 配置</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="sub-section" id="cli-gateway" data-category="cli">
+      <h4>📡 网关</h4>
+      <div class="commands-grid">
+        <div class="command-card" data-search="gateway 网关 run install start stop restart status setup">
+          <div class="cmd-name">hermes gateway</div>
+          <div class="cmd-desc">网关：run 前台 · install 安装服务 · start/stop 启停 · restart 重启 · status 状态 · setup 配置平台</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="sub-section" id="cli-sessions" data-category="cli">
+      <h4>📜 会话管理</h4>
+      <div class="commands-grid">
+        <div class="command-card" data-search="sessions list browse export rename delete prune stats 会话">
+          <div class="cmd-name">hermes sessions</div>
+          <div class="cmd-desc">会话：list 列出 · browse 浏览 · export 导出JSONL · rename 重命名 · delete 删除 · prune 清理 · stats 统计</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="sub-section" id="cli-cron" data-category="cli">
+      <h4>⏰ Cron 定时</h4>
+      <div class="commands-grid">
+        <div class="command-card" data-search="cron list create edit pause resume run remove status 定时">
+          <div class="cmd-name">hermes cron</div>
+          <div class="cmd-desc">定时管理：list 列出 · create 创建 · edit 编辑 · pause/resume 暂停恢复 · run 触发 · remove 删除 · status 状态</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="sub-section" id="cli-webhooks" data-category="cli">
+      <h4>🪝 Webhooks</h4>
+      <div class="commands-grid">
+        <div class="command-card" data-search="webhook subscribe list remove test 订阅">
+          <div class="cmd-name">hermes webhook</div>
+          <div class="cmd-desc">Webhook：subscribe 订阅 · list 列出 · remove 移除 · test 测试</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="sub-section" id="cli-profiles" data-category="cli">
+      <h4>👤 配置文件</h4>
+      <div class="commands-grid">
+        <div class="command-card" data-search="profile list create use delete show alias rename export import 配置">
+          <div class="cmd-name">hermes profile</div>
+          <div class="cmd-desc">配置文件：list 列出 · create 创建 · use 设置默认 · delete 删除 · show 详情 · rename 重命名 · export 导出 · import 导入</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="sub-section" id="cli-other" data-category="cli">
+      <h4>📦 其他命令</h4>
+      <div class="commands-grid">
+        <div class="command-card" data-search="insights update desktop gui dashboard proxy portal kanban plugins send completion acp uninstall 其他">
+          <div class="cmd-name">hermes insights / update / desktop / dashboard / proxy / portal / kanban / plugins / send / completion / acp / uninstall</div>
+          <div class="cmd-desc">
+            insights 使用分析 · update 更新 · desktop/gui 桌面应用 · dashboard Web面板 · proxy OpenAI代理 · portal 快速登录 · kanban 看板 · plugins 插件 · send 发送消息 · completion 补全脚本 · acp IDE集成 · claw migrate 迁移 · uninstall 卸载
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== SECTION: SLASH COMMANDS ===== -->
+  <div class="section" data-category="slash" id="slash-section">
+    <div class="section-header">
+      <div class="section-icon icon-green">⚡</div>
+      <h3>会话内斜杠命令</h3>
+    </div>
+
+    <div class="sub-section" id="slash-session" data-category="slash">
+      <h4>🎛️ 会话控制</h4>
+      <div class="commands-grid">
+        <div class="command-card" data-search="/new /reset 新会话 重置 /clear 清屏 /retry 重试 /undo 撤销 /title 标题 /compress 压缩 /stop 停止 /rollback 恢复 /snapshot 快照">
+          <div class="cmd-name">/new /reset /clear /retry /undo /title /compress /stop /rollback /snapshot</div>
+          <div class="cmd-desc">会话控制：new/reset 新会话 · clear 清屏 · retry 重试 · undo 撤销 · title 命名 · compress 压缩 · stop 停止后台 · rollback 恢复检查点 · snapshot 快照</div>
+        </div>
+        <div class="command-card" data-search="/background /queue /steer /agents /resume /goal /redraw 后台 排队">
+          <div class="cmd-name">/background /queue /steer /agents /resume /goal /redraw</div>
+          <div class="cmd-desc">高级：background 后台运行 · queue 排队 · steer 注入消息 · agents 查看代理 · resume 恢复会话 · goal 设定目标 · redraw 重绘UI</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="sub-section" id="slash-config" data-category="slash">
+      <h4>⚙️ 配置（会话内）</h4>
+      <div class="commands-grid">
+        <div class="command-card" data-search="/config /model /personality /reasoning /verbose /voice /yolo /busy /indicator /footer /skin /statusbar">
+          <div class="cmd-name">/config /model /personality /reasoning /verbose /voice /yolo /busy /skin /statusbar</div>
+          <div class="cmd-desc">config 显示配置 · model 模型 · personality 人格 · reasoning 推理级别 · verbose 详细 · voice 语音 · yolo 跳过批准 · skin 主题 · statusbar 状态栏</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="sub-section" id="slash-tools" data-category="slash">
+      <h4>🛠️ 工具和技能（会话内）</h4>
+      <div class="commands-grid">
+        <div class="command-card" data-search="/tools /toolsets /skills /skill /reload /reload-skills /reload-mcp /cron /curator /kanban /plugins">
+          <div class="cmd-name">/tools /toolsets /skills /skill /reload /reload-skills /reload-mcp /cron /curator /kanban /plugins</div>
+          <div class="cmd-desc">tools 管理工具 · skills 搜索安装 · skill 加载技能 · reload 重载env · reload-mcp 重载MCP · cron 定时管理 · curator 技能维护 · kanban 看板</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="sub-section" id="slash-gateway" data-category="slash">
+      <h4>📡 网关（会话内）</h4>
+      <div class="commands-grid">
+        <div class="command-card" data-search="/approve /deny /restart /sethome /update /topic /platforms /gateway">
+          <div class="cmd-name">/approve /deny /restart /sethome /update /topic /platforms</div>
+          <div class="cmd-desc">approve/deny 批准拒绝 · restart 重启网关 · sethome 设家庭频道 · update 更新 · topic 话题 · platforms 平台状态</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="sub-section" id="slash-utility" data-category="slash">
+      <h4>🔧 实用工具（会话内）</h4>
+      <div class="commands-grid">
+        <div class="command-card" data-search="/branch /fork /handoff /fast /browser /history /save /copy /paste /image">
+          <div class="cmd-name">/branch /handoff /fast /browser /history /save /copy /paste /image</div>
+          <div class="cmd-desc">branch 分支会话 · handoff 移交平台 · fast 快速模式 · browser 浏览器 · history 历史 · save 保存 · copy 复制 · paste/image 图片</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="sub-section" id="slash-info" data-category="slash">
+      <h4>ℹ️ 信息</h4>
+      <div class="commands-grid">
+        <div class="command-card" data-search="/help /commands /usage /insights /status /profile /debug /quit /exit /q">
+          <div class="cmd-name">/help /commands /usage /insights /status /profile /debug /quit</div>
+          <div class="cmd-desc">help 帮助 · commands 浏览命令 · usage Token统计 · insights 分析 · status 会话信息 · profile 配置信息 · debug 调试 · quit 退出</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== SECTION: TOOLSETS ===== -->
+  <div class="section" data-category="toolset" id="toolsets">
+    <div class="section-header">
+      <div class="section-icon icon-orange">📊</div>
+      <h3>工具集列表 <span class="count">32</span></h3>
+    </div>
+    <div class="table-wrap">
+      <table class="toolsets-table">
+        <thead><tr><th>工具集</th><th>能力</th><th>状态</th></tr></thead>
+        <tbody>
+          <tr><td class="ts-name">web</td><td>网络搜索和内容提取</td><td>✅</td></tr>
+          <tr><td class="ts-name">terminal</td><td>Shell 命令和进程管理</td><td>✅</td></tr>
+          <tr><td class="ts-name">file</td><td>文件读取/写入/搜索/修补</td><td>✅</td></tr>
+          <tr><td class="ts-name">code_execution</td><td>沙盒 Python 执行</td><td>✅</td></tr>
+          <tr><td class="ts-name">vision</td><td>图像分析</td><td>✅</td></tr>
+          <tr><td class="ts-name">image_gen</td><td>AI 图像生成和编辑</td><td>✅</td></tr>
+          <tr><td class="ts-name">video</td><td>视频分析和生成</td><td>✅</td></tr>
+          <tr><td class="ts-name">x_search</td><td>X (Twitter) 搜索</td><td>✅</td></tr>
+          <tr><td class="ts-name">browser</td><td>浏览器自动化</td><td>✅</td></tr>
+          <tr><td class="ts-name">tts</td><td>文字转语音</td><td>✅</td></tr>
+          <tr><td class="ts-name">skills</td><td>技能浏览和管理</td><td>✅</td></tr>
+          <tr><td class="ts-name">memory</td><td>持久化跨会话记忆</td><td>✅</td></tr>
+          <tr><td class="ts-name">session_search</td><td>搜索过去对话</td><td>✅</td></tr>
+          <tr><td class="ts-name">delegation</td><td>子代理任务委托</td><td>✅</td></tr>
+          <tr><td class="ts-name">cronjob</td><td>定时任务管理</td><td>✅</td></tr>
+          <tr><td class="ts-name">clarify</td><td>向用户提问澄清</td><td>✅</td></tr>
+          <tr><td class="ts-name">messaging</td><td>跨平台消息发送</td><td>✅</td></tr>
+          <tr><td class="ts-name">todo</td><td>会话内任务规划跟踪</td><td>✅</td></tr>
+          <tr><td class="ts-name">kanban</td><td>多代理工作队列</td><td>✅</td></tr>
+          <tr><td class="ts-name">search</td><td>仅网络搜索</td><td>✅</td></tr>
+          <tr><td class="ts-name">debugging</td><td>额外调试工具</td><td>❌</td></tr>
+          <tr><td class="ts-name">safe</td><td>最小化低风险工具集</td><td>—</td></tr>
+          <tr><td class="ts-name">spotify</td><td>Spotify 播放控制</td><td>—</td></tr>
+          <tr><td class="ts-name">homeassistant</td><td>智能家居控制</td><td>❌</td></tr>
+          <tr><td class="ts-name">discord</td><td>Discord 集成</td><td>—</td></tr>
+          <tr><td class="ts-name">feishu_doc</td><td>飞书文档</td><td>—</td></tr>
+          <tr><td class="ts-name">feishu_drive</td><td>飞书云盘</td><td>—</td></tr>
+          <tr><td class="ts-name">yuanbao</td><td>元宝集成</td><td>—</td></tr>
+          <tr><td class="ts-name">rl</td><td>强化学习工具</td><td>❌</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ===== SECTION: PATHS ===== -->
+  <div class="section" id="paths" data-category="toolset">
+    <div class="section-header">
+      <div class="section-icon icon-teal">📂</div>
+      <h3>关键路径</h3>
+    </div>
+    <div class="table-wrap">
+      <table class="toolsets-table">
+        <thead><tr><th>路径</th><th>说明</th></tr></thead>
+        <tbody>
+          <tr><td class="ts-name">~/.hermes/config.yaml</td><td>主配置文件</td></tr>
+          <tr><td class="ts-name">~/.hermes/.env</td><td>API 密钥和环境变量</td></tr>
+          <tr><td class="ts-name">~/.hermes/skills/</td><td>已安装技能</td></tr>
+          <tr><td class="ts-name">~/.hermes/state.db</td><td>会话存储（SQLite + FTS5）</td></tr>
+          <tr><td class="ts-name">~/.hermes/logs/</td><td>网关和错误日志</td></tr>
+          <tr><td class="ts-name">~/.hermes/auth.json</td><td>OAuth 令牌和凭据池</td></tr>
+          <tr><td class="ts-name">~/.hermes/hermes-agent/</td><td>源代码（git 安装时）</td></tr>
+          <tr><td class="ts-name">~/.hermes/profiles/&lt;name&gt;/</td><td>配置文件目录</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</main>
+
+<!-- ===== BOTTOM NAV ===== -->
+<nav class="bottom-nav" id="bottomNav">
+  <button class="nav-item active" data-tag="all">
+    <span class="nav-emoji">🏠</span>全部
+  </button>
+  <button class="nav-item" data-tag="ai-tool">
+    <span class="nav-emoji">🤖</span>AI 工具
+  </button>
+  <button class="nav-item" data-tag="cli">
+    <span class="nav-emoji">🖥️</span>CLI
+  </button>
+  <button class="nav-item" data-tag="slash">
+    <span class="nav-emoji">⚡</span>斜杠
+  </button>
+  <button class="nav-item" data-tag="toolset">
+    <span class="nav-emoji">📊</span>工具集
+  </button>
+</nav>
+
+<script>
+(function() {
+  const searchInput = document.getElementById('searchInput');
+  const searchStats = document.getElementById('searchStats');
+  const mainContent = document.getElementById('mainContent');
+  const menuBtn = document.getElementById('menuBtn');
+  const drawer = document.getElementById('drawer');
+  const overlay = document.getElementById('overlay');
+  const backTop = document.getElementById('backTop');
+  const bottomNav = document.getElementById('bottomNav');
+  const tagFilters = document.getElementById('tagFilters');
+  const allCards = document.querySelectorAll('.command-card');
+  const allRows = document.querySelectorAll('.toolsets-table tbody tr');
+  const allSections = document.querySelectorAll('.section');
+  const allSubSections = document.querySelectorAll('.sub-section');
+
+  let currentTag = 'all';
+
+  // ===== DRAWER =====
+  function openDrawer() {
+    drawer.classList.add('open');
+    overlay.classList.add('open');
+    document.body.style.overflow = 'hidden';
+  }
+  function closeDrawer() {
+    drawer.classList.remove('open');
+    overlay.classList.remove('open');
+    document.body.style.overflow = '';
+  }
+  menuBtn.addEventListener('click', openDrawer);
+  overlay.addEventListener('click', closeDrawer);
+  drawer.querySelectorAll('a').forEach(link => {
+    link.addEventListener('click', () => {
+      closeDrawer();
+      const id = link.getAttribute('href').substring(1);
+      const el = document.getElementById(id);
+      if (el) {
+        setTimeout(() => el.scrollIntoView({ behavior: 'smooth', block: 'start' }), 280);
+      }
+    });
+  });
+
+  // ===== BACK TO TOP =====
+  window.addEventListener('scroll', () => {
+    backTop.classList.toggle('visible', window.scrollY > 400);
+  });
+
+  // ===== TAG FILTERS =====
+  function setTag(tag) {
+    currentTag = tag;
+    // Update pills
+    tagFilters.querySelectorAll('.tag-pill').forEach(p => p.classList.toggle('active', p.dataset.tag === tag));
+    // Update bottom nav
+    bottomNav.querySelectorAll('.nav-item').forEach(n => n.classList.toggle('active', n.dataset.tag === tag));
+    // Update search input placeholder
+    searchInput.value = '';
+    filterContent();
+  }
+
+  tagFilters.querySelectorAll('.tag-pill').forEach(pill => {
+    pill.addEventListener('click', () => setTag(pill.dataset.tag));
+  });
+
+  bottomNav.querySelectorAll('.nav-item').forEach(item => {
+    item.addEventListener('click', () => {
+      setTag(item.dataset.tag);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
+  });
+
+  // ===== FILTER BY TAG =====
+  function filterContent() {
+    const query = searchInput.value.trim().toLowerCase();
+    const terms = query.split(/\s+/).filter(t => t.length > 0);
+
+    // Reset highlights
+    allCards.forEach(card => {
+      const nameEl = card.querySelector('.cmd-name');
+      const descEl = card.querySelector('.cmd-desc');
+      if (nameEl) nameEl.innerHTML = nameEl.textContent;
+      if (descEl) descEl.innerHTML = descEl.textContent;
+    });
+
+    let visibleCount = 0;
+    const noTag = currentTag === 'all';
+
+    // Filter cards
+    allCards.forEach(card => {
+      const searchData = (card.getAttribute('data-search') || '').toLowerCase();
+      const textContent = (card.textContent || '').toLowerCase();
+      const combined = searchData + ' ' + textContent;
+
+      const matchesSearch = terms.length === 0 || terms.every(t => combined.includes(t));
+
+      // Check category
+      let matchesTag = noTag;
+      if (!noTag) {
+        let el = card.parentElement;
+        while (el) {
+          if (el.dataset && el.dataset.category) {
+            if (el.dataset.category === currentTag) matchesTag = true;
+            break;
+          }
+          el = el.parentElement;
+        }
+        // Also check parent section
+        if (!matchesTag) {
+          const section = card.closest('.section');
+          if (section && section.dataset.category === currentTag) matchesTag = true;
+        }
+      }
+
+      const show = matchesSearch && matchesTag;
+      card.style.display = show ? '' : 'none';
+      if (show) {
+        visibleCount++;
+        if (terms.length > 0) {
+          const nameEl = card.querySelector('.cmd-name');
+          const descEl = card.querySelector('.cmd-desc');
+          terms.forEach(term => {
+            if (nameEl) nameEl.innerHTML = highlightText(nameEl.textContent, term);
+            if (descEl) descEl.innerHTML = highlightText(descEl.textContent, term);
+          });
+        }
+      }
+    });
+
+    // Filter table rows
+    let visibleRows = 0;
+    allRows.forEach(row => {
+      const textContent = (row.textContent || '').toLowerCase();
+      const matchesSearch = terms.length === 0 || terms.every(t => textContent.includes(t));
+
+      let matchesTag = noTag;
+      if (!noTag) {
+        const section = row.closest('.section');
+        if (section && section.dataset.category === currentTag) matchesTag = true;
+      }
+
+      const show = matchesSearch && matchesTag;
+      row.style.display = show ? '' : 'none';
+      if (show) visibleRows++;
+    });
+
+    // Show/hide sections
+    allSections.forEach(section => {
+      const hasVisible = section.querySelectorAll('.command-card:not([style*="display: none"])').length > 0
+        || section.querySelectorAll('tbody tr:not([style*="display: none"])').length > 0;
+      section.style.display = hasVisible ? '' : 'none';
+    });
+
+    allSubSections.forEach(sub => {
+      const visibleCards = sub.querySelectorAll('.command-card:not([style*="display: none"])').length;
+      sub.style.display = visibleCards > 0 ? '' : 'none';
+    });
+
+    // Stats
+    const total = allCards.length + allRows.length;
+    const visible = visibleCount + visibleRows;
+    if (terms.length > 0 || !noTag) {
+      const filterLabel = noTag ? '' : `分类: "${currentTag}" · `;
+      searchStats.textContent = `${filterLabel}找到 ${visible} / ${total} 条结果`;
+    } else {
+      searchStats.textContent = '';
+    }
+
+    // No results
+    let noResultsEl = document.querySelector('.no-results');
+    if (visible === 0 && (terms.length > 0 || !noTag)) {
+      if (!noResultsEl) {
+        noResultsEl = document.createElement('div');
+        noResultsEl.className = 'no-results';
+        noResultsEl.innerHTML = `<div class="no-results-icon">🔍</div><h3>未找到匹配</h3><p>尝试其他关键词或切换分类</p>`;
+        mainContent.appendChild(noResultsEl);
+      }
+    } else if (noResultsEl) {
+      noResultsEl.remove();
+    }
+  }
+
+  function escapeRegex(s) { return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
+  function highlightText(text, query) {
+    if (!query) return text;
+    const regex = new RegExp(`(${escapeRegex(query)})`, 'gi');
+    return text.replace(regex, '<span class="highlight">$1</span>');
+  }
+
+  // Search input
+  let debounce;
+  searchInput.addEventListener('input', () => {
+    clearTimeout(debounce);
+    debounce = setTimeout(filterContent, 150);
+  });
+
+  // Drawer active state on scroll
+  let scrollTimer;
+  window.addEventListener('scroll', () => {
+    clearTimeout(scrollTimer);
+    scrollTimer = setTimeout(updateDrawerActive, 150);
+  });
+
+  function updateDrawerActive() {
+    const links = drawer.querySelectorAll('a');
+    let current = links[0];
+    links.forEach(link => {
+      const id = link.getAttribute('href').substring(1);
+      const el = document.getElementById(id);
+      if (el) {
+        const rect = el.getBoundingClientRect();
+        if (rect.top <= 120) current = link;
+      }
+    });
+    links.forEach(l => l.classList.remove('active'));
+    if (current) current.classList.add('active');
+  }
+
+  updateDrawerActive();
+})();
+</script>
+
+</body>
+</html>
